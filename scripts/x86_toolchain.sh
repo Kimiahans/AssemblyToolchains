@@ -1,6 +1,7 @@
 #! /bin/bash
 
 # Created by Lubos Kuzma
+# MODIFIED BY Kimia
 # ISS Program, SADT, SAIT
 # August 2022
 
@@ -25,7 +26,7 @@ POSITIONAL_ARGS=()
 GDB=False
 OUTPUT_FILE=""
 VERBOSE=False
-BITS=False
+BITS= "64" # default to 64-bit
 QEMU=False
 BREAK="_start"
 RUN=False
@@ -95,82 +96,42 @@ if [ "$VERBOSE" == "True" ]; then
 	echo "	64 bit mode = $BITS" 
 	echo ""
 
-	echo "NASM started..."
+	echo "GCC Compilation started..."
 
 fi
 
-if [ "$BITS" == "True" ]; then
-
-	nasm -f elf64 $1 -o $OUTPUT_FILE.o && echo ""
-
-
-elif [ "$BITS" == "False" ]; then
-
-	nasm -f elf $1 -o $OUTPUT_FILE.o && echo ""
-
+GCC_FLAGS=""
+if [ "$BITS" == "64" ]; then
+	GCC_FLAGS="-m64"
 fi
+
+gcc $GCC_FLAGS -nostdlib -no-pie $1 -o $OUTPUT_FILE && echo ""
 
 if [ "$VERBOSE" == "True" ]; then
-
-	echo "NASM finished"
-	echo "Linking ..."
-	
-fi
-
-if [ "$VERBOSE" == "True" ]; then
-
-	echo "NASM finished"
-	echo "Linking ..."
-fi
-
-if [ "$BITS" == "True" ]; then
-
-	ld -m elf_x86_64 $OUTPUT_FILE.o -o $OUTPUT_FILE && echo ""
-
-
-elif [ "$BITS" == "False" ]; then
-
-	ld -m elf_i386 $OUTPUT_FILE.o -o $OUTPUT_FILE && echo ""
-
-fi
-
-
-if [ "$VERBOSE" == "True" ]; then
-
-	echo "Linking finished"
-
+    echo "GCC Compilation finished"
 fi
 
 if [ "$QEMU" == "True" ]; then
+    echo "Starting QEMU ..."
+    echo ""
 
-	echo "Starting QEMU ..."
-	echo ""
+    if [ "$BITS" == "64" ]; then
+        qemu-x86_64 $OUTPUT_FILE && echo ""
+    else
+        qemu-i386 $OUTPUT_FILE && echo ""
+    fi
 
-	if [ "$BITS" == "True" ]; then
-	
-		qemu-x86_64 $OUTPUT_FILE && echo ""
-
-	elif [ "$BITS" == "False" ]; then
-
-		qemu-i386 $OUTPUT_FILE && echo ""
-
-	fi
-
-	exit 0
-	
+    exit 0
 fi
 
 if [ "$GDB" == "True" ]; then
+    gdb_params=()
+    gdb_params+=(-ex "b ${BREAK}")
 
-	gdb_params=()
-	gdb_params+=(-ex "b ${BREAK}")
+    if [ "$RUN" == "True" ]; then
+        gdb_params+=(-ex "r")
+    fi
 
-	if [ "$RUN" == "True" ]; then
-
-		gdb_params+=(-ex "r")
-
-	fi
-
-	gdb "${gdb_params[@]}" $OUTPUT_FILE
-
+    gdb "${gdb_params[@]}" $OUTPUT_FILE
 fi
+``
